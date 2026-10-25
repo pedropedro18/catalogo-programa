@@ -4,6 +4,7 @@ from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -74,6 +75,17 @@ def listar_pedidos(x_token: str | None = Header(None)):
                        ORDER BY p.id DESC""")
         return cur.fetchall()
 
-# Só para uso local; na Vercel os ficheiros de public/ são servidos pela plataforma
+
+@app.get("/")
+def home():
+    return FileResponse("public/catalogo.html")
+
+
+@app.get("/admin")
+def admin():
+    return FileResponse("public/admin.html")
+
+
+# Tem de ficar no fim, depois de todas as rotas
 if os.path.isdir("public"):
     app.mount("/", StaticFiles(directory="public", html=True), name="site")
