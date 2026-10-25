@@ -13,7 +13,7 @@ from pydantic import BaseModel
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
-BASE = Path(_file_).parent
+BASE = Path(__file__).parent
 
 app = FastAPI()
 app.add_middleware(
