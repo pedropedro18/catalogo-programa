@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
@@ -11,6 +13,7 @@ from pydantic import BaseModel
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
+BASE = Path(_file_).parent
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
@@ -78,14 +81,15 @@ def listar_pedidos(x_token: str | None = Header(None)):
 
 @app.get("/")
 def home():
-    return FileResponse("public/catalogo.html")
+    return FileResponse(BASE / "public" / "catalogo.html")
 
 
 @app.get("/admin")
 def admin():
-    return FileResponse("public/admin.html")
+    return FileResponse(BASE / "public" / "admin.html")
 
 
 # Tem de ficar no fim, depois de todas as rotas
-if os.path.isdir("public"):
-    app.mount("/", StaticFiles(directory="public", html=True), name="site")
+if (BASE / "public").is_dir():
+    app.mount("/", StaticFiles(directory=str(BASE / "public"), html=True),
+              name="site")
