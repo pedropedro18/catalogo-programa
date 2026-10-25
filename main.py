@@ -74,6 +74,6 @@ def listar_pedidos(x_token: str | None = Header(None)):
                        ORDER BY p.id DESC""")
         return cur.fetchall()
 
-
-# Tem de ficar no fim, depois de todas as rotas /api
-app.mount("/", StaticFiles(directory="static", html=True), name="site")
+# Só para uso local; na Vercel os ficheiros de public/ são servidos pela plataforma
+if os.path.isdir("public"):
+    app.mount("/", StaticFiles(directory="public", html=True), name="site")
