@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 import psycopg2
@@ -6,7 +7,7 @@ from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -24,17 +25,11 @@ app.add_middleware(
 )
 
 
-def db():
-    return psycopg2.connect(
-        DATABASE_URL, connect_timeout=10, cursor_factory=RealDictCursor
-    )
-
-
 class CursoIn(BaseModel):
     titulo: str
     descricao: str = ""
     nivel: str = ""
-    preco: float = 0
+    preco: float
 
 
 class PedidoIn(BaseModel):
@@ -43,9 +38,28 @@ class PedidoIn(BaseModel):
     telefone: str
 
 
+@contextmanager
+def db():
+    con = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    try:
+        yield con
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
+
+
 def exigir_admin(token: str | None):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(401, "Não autorizado")
+
+
+@app.get("/api/verificar")
+def verificar(x_token: str | None = Header(None)):
+    exigir_admin(x_token)
+    return {"ok": True}
 
 
 @app.get("/api/cursos")
@@ -61,10 +75,34 @@ def criar_curso(c: CursoIn, x_token: str | None = Header(None)):
     with db() as con, con.cursor() as cur:
         cur.execute(
             """INSERT INTO cursos (titulo, descricao, nivel, preco)
-               VALUES (%s,%s,%s,%s) RETURNING *""",
+               VALUES (%s, %s, %s, %s) RETURNING *""",
             (c.titulo, c.descricao, c.nivel, c.preco),
         )
         return cur.fetchone()
+
+
+@app.put("/api/cursos/{curso_id}")
+def atualizar_curso(curso_id: int, c: CursoIn, x_token: str | None = Header(None)):
+    exigir_admin(x_token)
+    with db() as con, con.cursor() as cur:
+        cur.execute(
+            """UPDATE cursos SET titulo=%s, descricao=%s, nivel=%s, preco=%s
+               WHERE id=%s RETURNING *""",
+            (c.titulo, c.descricao, c.nivel, c.preco, curso_id),
+        )
+        linha = cur.fetchone()
+        if not linha:
+            raise HTTPException(404, "Curso não encontrado")
+        return linha
+
+
+@app.delete("/api/cursos/{curso_id}")
+def apagar_curso(curso_id: int, x_token: str | None = Header(None)):
+    exigir_admin(x_token)
+    with db() as con, con.cursor() as cur:
+        # só esconde do catálogo, não apaga de vez
+        cur.execute("UPDATE cursos SET ativo = FALSE WHERE id=%s", (curso_id,))
+    return {"ok": True}
 
 
 @app.post("/api/pedidos")
@@ -72,7 +110,7 @@ def criar_pedido(p: PedidoIn):
     with db() as con, con.cursor() as cur:
         cur.execute(
             """INSERT INTO pedidos (curso_id, nome_cliente, telefone)
-               VALUES (%s,%s,%s) RETURNING *""",
+               VALUES (%s, %s, %s) RETURNING *""",
             (p.curso_id, p.nome_cliente, p.telefone),
         )
         return cur.fetchone()
@@ -82,29 +120,19 @@ def criar_pedido(p: PedidoIn):
 def listar_pedidos(x_token: str | None = Header(None)):
     exigir_admin(x_token)
     with db() as con, con.cursor() as cur:
-        cur.execute(
-            """SELECT p.*, c.titulo FROM pedidos p
-               LEFT JOIN cursos c ON c.id = p.curso_id
-               ORDER BY p.id DESC"""
-        )
+        cur.execute("SELECT * FROM pedidos ORDER BY id DESC")
         return cur.fetchall()
 
 
-# No Vercel, a pasta public/ é servida pelo CDN, por isso redirecionamos
-# em vez de ler os ficheiros HTML dentro da função.
 @app.get("/")
-def home():
-    return RedirectResponse("/static/catalogo.html")
+def pagina_catalogo():
+    return FileResponse(BASE / "public" / "static" / "catalogo.html")
 
 
 @app.get("/admin")
-def admin():
-    return RedirectResponse("/admin.html")
+def pagina_admin():
+    return FileResponse(BASE / "public" / "admin.html")
 
 
-# Só para correr localmente (uvicorn main:app). Tem de ficar no fim,
-# depois de todas as rotas.
-if (BASE / "public").is_dir():
-    app.mount(
-        "/", StaticFiles(directory=str(BASE / "public"), html=True), name="site"
-    )
+# Tem de ficar no fim: serve /admin.html e /static/catalogo.html
+app.mount("/", StaticFiles(directory=BASE / "public", html=True), name="public")
