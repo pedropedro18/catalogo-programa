@@ -6,7 +6,7 @@ from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -16,13 +16,18 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
 BASE = Path(_file_).parent
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"],
-                   allow_methods=[""], allow_headers=[""])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def db():
-    return psycopg2.connect(DATABASE_URL, connect_timeout=10,
-                            cursor_factory=RealDictCursor)
+    return psycopg2.connect(
+        DATABASE_URL, connect_timeout=10, cursor_factory=RealDictCursor
+    )
 
 
 class CursoIn(BaseModel):
@@ -54,18 +59,22 @@ def listar_cursos():
 def criar_curso(c: CursoIn, x_token: str | None = Header(None)):
     exigir_admin(x_token)
     with db() as con, con.cursor() as cur:
-        cur.execute("""INSERT INTO cursos (titulo, descricao, nivel, preco)
-                       VALUES (%s,%s,%s,%s) RETURNING *""",
-                    (c.titulo, c.descricao, c.nivel, c.preco))
+        cur.execute(
+            """INSERT INTO cursos (titulo, descricao, nivel, preco)
+               VALUES (%s,%s,%s,%s) RETURNING *""",
+            (c.titulo, c.descricao, c.nivel, c.preco),
+        )
         return cur.fetchone()
 
 
 @app.post("/api/pedidos")
 def criar_pedido(p: PedidoIn):
     with db() as con, con.cursor() as cur:
-        cur.execute("""INSERT INTO pedidos (curso_id, nome_cliente, telefone)
-                       VALUES (%s,%s,%s) RETURNING *""",
-                    (p.curso_id, p.nome_cliente, p.telefone))
+        cur.execute(
+            """INSERT INTO pedidos (curso_id, nome_cliente, telefone)
+               VALUES (%s,%s,%s) RETURNING *""",
+            (p.curso_id, p.nome_cliente, p.telefone),
+        )
         return cur.fetchone()
 
 
@@ -73,23 +82,29 @@ def criar_pedido(p: PedidoIn):
 def listar_pedidos(x_token: str | None = Header(None)):
     exigir_admin(x_token)
     with db() as con, con.cursor() as cur:
-        cur.execute("""SELECT p.*, c.titulo FROM pedidos p
-                       LEFT JOIN cursos c ON c.id = p.curso_id
-                       ORDER BY p.id DESC""")
+        cur.execute(
+            """SELECT p.*, c.titulo FROM pedidos p
+               LEFT JOIN cursos c ON c.id = p.curso_id
+               ORDER BY p.id DESC"""
+        )
         return cur.fetchall()
 
 
+# No Vercel, a pasta public/ é servida pelo CDN, por isso redirecionamos
+# em vez de ler os ficheiros HTML dentro da função.
 @app.get("/")
 def home():
-    return FileResponse(BASE / "public" / "catalogo.html")
+    return RedirectResponse("/static/catalogo.html")
 
 
 @app.get("/admin")
 def admin():
-    return FileResponse(BASE / "public" / "admin.html")
+    return RedirectResponse("/admin.html")
 
 
-# Tem de ficar no fim, depois de todas as rotas
+# Só para correr localmente (uvicorn main:app). Tem de ficar no fim,
+# depois de todas as rotas.
 if (BASE / "public").is_dir():
-    app.mount("/", StaticFiles(directory=str(BASE / "public"), html=True),
-              name="site")
+    app.mount(
+        "/", StaticFiles(directory=str(BASE / "public"), html=True), name="site"
+    )
