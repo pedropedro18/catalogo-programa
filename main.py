@@ -28,6 +28,7 @@ app.add_middleware(
 class CursoIn(BaseModel):
     titulo: str
     descricao: str = ""
+    categoria: str = ""
     nivel: str = ""
     preco: float
 
@@ -49,6 +50,18 @@ def db():
         raise
     finally:
         con.close()
+
+
+@app.on_event("startup")
+def preparar_base():
+    # Cria a coluna "categoria" se ainda não existir (seguro correr várias vezes)
+    try:
+        with db() as con, con.cursor() as cur:
+            cur.execute(
+                "ALTER TABLE cursos ADD COLUMN IF NOT EXISTS categoria TEXT NOT NULL DEFAULT ''"
+            )
+    except Exception as e:
+        print("Aviso ao preparar a base de dados:", e)
 
 
 def exigir_admin(token: str | None):
@@ -74,9 +87,9 @@ def criar_curso(c: CursoIn, x_token: str | None = Header(None)):
     exigir_admin(x_token)
     with db() as con, con.cursor() as cur:
         cur.execute(
-            """INSERT INTO cursos (titulo, descricao, nivel, preco)
-               VALUES (%s, %s, %s, %s) RETURNING *""",
-            (c.titulo, c.descricao, c.nivel, c.preco),
+            """INSERT INTO cursos (titulo, descricao, categoria, nivel, preco)
+               VALUES (%s, %s, %s, %s, %s) RETURNING *""",
+            (c.titulo, c.descricao, c.categoria, c.nivel, c.preco),
         )
         return cur.fetchone()
 
@@ -86,9 +99,9 @@ def atualizar_curso(curso_id: int, c: CursoIn, x_token: str | None = Header(None
     exigir_admin(x_token)
     with db() as con, con.cursor() as cur:
         cur.execute(
-            """UPDATE cursos SET titulo=%s, descricao=%s, nivel=%s, preco=%s
+            """UPDATE cursos SET titulo=%s, descricao=%s, categoria=%s, nivel=%s, preco=%s
                WHERE id=%s RETURNING *""",
-            (c.titulo, c.descricao, c.nivel, c.preco, curso_id),
+            (c.titulo, c.descricao, c.categoria, c.nivel, c.preco, curso_id),
         )
         linha = cur.fetchone()
         if not linha:

@@ -17,6 +17,8 @@
   main { max-width: 820px; margin: 0 auto; padding: 28px 16px 64px; }
   h1 { margin: 0 0 18px; font-size: 1.7rem; }
   h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  h3.cat { font-size: 1rem; margin: 18px 0 4px; color: var(--laranja); }
+  h3.cat:first-child { margin-top: 0; }
   .box { background: #fff; border: 1px solid var(--linha); border-radius: 6px; padding: 16px; margin-bottom: 22px; }
   label { display: block; margin: 10px 0 4px; font-size: .9rem; }
   input, textarea, select {
@@ -26,14 +28,14 @@
   button { font: inherit; cursor: pointer; border: 0; border-radius: 4px; background: var(--laranja); color: #fff; padding: 10px 16px; }
   button.sec { background: transparent; color: var(--tinta); border: 1px solid var(--linha); }
   button.perigo { background: transparent; color: #a3201a; border: 1px solid #e3b9b6; }
-  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--tinta); outline-offset: 2px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--tinta); outline-offset: 2px; }
   .linha { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .linha input { flex: 1; min-width: 180px; }
   #msg { min-height: 1.4em; margin: 10px 0; color: #a3201a; }
   #msg.ok { color: #1d6b3a; }
   #painel { display: none; }
   .item { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--linha); flex-wrap: wrap; }
-  .item:first-child { border-top: 0; }
+  h3.cat + .item { border-top: 0; }
   .item small { color: var(--suave); display: block; }
   .botoes { display: flex; gap: 8px; }
   .vazio { color: var(--suave); }
@@ -55,14 +57,34 @@
   <div id="painel">
     <section class="box">
       <h2 id="tituloForm">Novo curso</h2>
+
+      <label for="categoria">Categoria</label>
+      <select id="categoria">
+        <option value="">Escolhe a categoria...</option>
+        <option>Excel</option>
+        <option>Word</option>
+        <option>Python</option>
+        <option>HTML</option>
+        <option>Inglês</option>
+      </select>
+
+      <label for="nivel">Nível</label>
+      <select id="nivel">
+        <option value="">Escolhe o nível...</option>
+        <option>Iniciante</option>
+        <option>Intermédio</option>
+        <option>Avançado</option>
+      </select>
+
       <label for="titulo">Título</label>
-      <input id="titulo">
+      <input id="titulo" placeholder="Ex.: Excel - Iniciante">
+
       <label for="descricao">Descrição</label>
       <textarea id="descricao"></textarea>
-      <label for="nivel">Nível</label>
-      <input id="nivel" placeholder="Ex.: Iniciante, Intermédio">
+
       <label for="preco">Preço em Kz</label>
       <input id="preco" inputmode="decimal" placeholder="Ex.: 15000">
+
       <div class="linha" style="margin-top:14px">
         <button id="btnGuardar">Adicionar curso</button>
         <button id="btnCancelar" class="sec" style="display:none">Cancelar edição</button>
@@ -83,6 +105,8 @@
 
 <script>
   const API = "";
+  const ORDEM_CATEGORIAS = ["Excel", "Word", "Python", "HTML", "Inglês"];
+  const ORDEM_NIVEIS = ["Iniciante", "Intermédio", "Avançado"];
   let CHAVE = "";
   let cursos = [];
   let editando = null;
@@ -91,6 +115,7 @@
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const kz = v => Number(v).toLocaleString("pt-AO", { maximumFractionDigits: 2 }) + " Kz";
+  const pos = (lista, valor) => { const i = lista.indexOf(valor); return i === -1 ? lista.length : i; };
 
   function msg(t, ok) { const m = $("msg"); m.textContent = t; m.className = ok ? "ok" : ""; }
 
@@ -130,22 +155,45 @@
     }
   }
 
+  function htmlItem(c) {
+    return `
+      <div class="item">
+        <div>
+          <strong>${esc(c.titulo)}</strong>
+          <small>${esc(c.nivel || "sem nível")} - ${kz(c.preco)}</small>
+        </div>
+        <div class="botoes">
+          <button class="sec" data-acao="editar" data-id="${c.id}">Editar</button>
+          <button class="perigo" data-acao="apagar" data-id="${c.id}">Apagar</button>
+        </div>
+      </div>`;
+  }
+
   async function carregar() {
     try {
       const r = await fetch(API + "/api/cursos");
       cursos = await r.json();
       $("cursos").className = "";
-      $("cursos").innerHTML = cursos.length ? cursos.map(c => `
-        <div class="item">
-          <div>
-            <strong>${esc(c.titulo)}</strong>
-            <small>${esc(c.nivel)} - ${kz(c.preco)}</small>
-          </div>
-          <div class="botoes">
-            <button class="sec" data-acao="editar" data-id="${c.id}">Editar</button>
-            <button class="perigo" data-acao="apagar" data-id="${c.id}">Apagar</button>
-          </div>
-        </div>`).join("") : '<span class="vazio">Ainda não há cursos. Adiciona o primeiro acima.</span>';
+
+      if (!cursos.length) {
+        $("cursos").innerHTML = '<span class="vazio">Ainda não há cursos. Adiciona o primeiro acima.</span>';
+      } else {
+        const grupos = {};
+        cursos.forEach(c => {
+          const cat = c.categoria || "Sem categoria";
+          (grupos[cat] = grupos[cat] || []).push(c);
+        });
+        const nomes = Object.keys(grupos).sort((a, b) => {
+          if (a === "Sem categoria") return 1;
+          if (b === "Sem categoria") return -1;
+          const d = pos(ORDEM_CATEGORIAS, a) - pos(ORDEM_CATEGORIAS, b);
+          return d !== 0 ? d : a.localeCompare(b, "pt");
+        });
+        $("cursos").innerHTML = nomes.map(nome => {
+          const lista = grupos[nome].sort((a, b) => pos(ORDEM_NIVEIS, a.nivel) - pos(ORDEM_NIVEIS, b.nivel));
+          return <h3 class="cat">${esc(nome)}</h3> + lista.map(htmlItem).join("");
+        }).join("");
+      }
     } catch (e) {
       $("cursos").textContent = "Não foi possível carregar os cursos.";
     }
@@ -172,20 +220,35 @@
 
   function limparForm() {
     editando = null;
-    ["titulo", "descricao", "nivel", "preco"].forEach(i => $(i).value = "");
+    ["titulo", "descricao", "preco"].forEach(i => $(i).value = "");
+    $("categoria").value = "";
+    $("nivel").value = "";
     $("tituloForm").textContent = "Novo curso";
     $("btnGuardar").textContent = "Adicionar curso";
     $("btnCancelar").style.display = "none";
   }
+
+  // Sugere o título quando categoria e nível estão escolhidos e o título está vazio
+  function sugerirTitulo() {
+    if ($("titulo").value.trim()) return;
+    if ($("categoria").value && $("nivel").value) {
+      $("titulo").value = $("categoria").value + " - " + $("nivel").value;
+    }
+  }
+  $("categoria").addEventListener("change", sugerirTitulo);
+  $("nivel").addEventListener("change", sugerirTitulo);
 
   async function guardar() {
     const preco = lerPreco($("preco").value);
     const dados = {
       titulo: $("titulo").value.trim(),
       descricao: $("descricao").value.trim(),
-      nivel: $("nivel").value.trim(),
+      categoria: $("categoria").value,
+      nivel: $("nivel").value,
       preco
     };
+    if (!dados.categoria) { msg("Escolhe a categoria."); return; }
+    if (!dados.nivel) { msg("Escolhe o nível."); return; }
     if (!dados.titulo) { msg("Escreve o título do curso."); return; }
     if (isNaN(preco)) { msg("Preço inválido. Escreve só números, por exemplo 15000."); return; }
     try {
@@ -229,6 +292,7 @@
     editando = id;
     $("titulo").value = c.titulo || "";
     $("descricao").value = c.descricao || "";
+    $("categoria").value = c.categoria || "";
     $("nivel").value = c.nivel || "";
     $("preco").value = c.preco ?? "";
     $("tituloForm").textContent = "Editar curso";
