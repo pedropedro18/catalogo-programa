@@ -79,7 +79,7 @@
     );
     return `<div class="card">
       <h3>${esc(c.titulo)}</h3>
-      ${c.nivel ? <span class="nivel">${esc(c.nivel)}</span> : ""}
+      ${c.nivel ? `<span class="nivel">${esc(c.nivel)}</span>` : ""}
       <p class="desc">${esc(c.descricao)}</p>
       <p class="preco">${kz(c.preco)}</p>
       <a class="zap" href="https://wa.me/${WHATSAPP}?text=${msg}" target="_blank" rel="noopener">Pedir no WhatsApp</a>
@@ -92,7 +92,7 @@
   function desenharNiveis() {
     const opcoes = [["", "Todos os níveis"], ...ORDEM_NIVEIS.map(n => [n, n])];
     document.getElementById("niveis").innerHTML = opcoes.map(([v, t]) =>
-      <button type="button" data-nivel="${esc(v)}" aria-pressed="${v === nivelAtivo}">${esc(t)}</button>
+      `<button type="button" data-nivel="${esc(v)}" aria-pressed="${v === nivelAtivo}">${esc(t)}</button>`
     ).join("");
   }
 
@@ -120,7 +120,7 @@
       return d !== 0 ? d : a.localeCompare(b, "pt");
     });
 
-    menu.innerHTML = nomes.map(n => <a href="#${slug(n)}">${esc(n)}</a>).join("");
+    menu.innerHTML = nomes.map(n => `<a href="#${slug(n)}">${esc(n)}</a>`).join("");
 
     div.innerHTML = nomes.map(nome => {
       const lista = grupos[nome].sort((a, b) => pos(ORDEM_NIVEIS, a.nivel) - pos(ORDEM_NIVEIS, b.nivel));
