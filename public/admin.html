@@ -191,7 +191,7 @@
         });
         $("cursos").innerHTML = nomes.map(nome => {
           const lista = grupos[nome].sort((a, b) => pos(ORDEM_NIVEIS, a.nivel) - pos(ORDEM_NIVEIS, b.nivel));
-          return <h3 class="cat">${esc(nome)}</h3> + lista.map(htmlItem).join("");
+          return `<h3 class="cat">${esc(nome)}</h3>` + lista.map(htmlItem).join("");
         }).join("");
       }
     } catch (e) {
