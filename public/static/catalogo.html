@@ -19,6 +19,10 @@
     .sub { margin: 0 0 22px; color: var(--suave); }
     #erro { color: #a3201a; min-height: 1.4em; }
 
+    #busca { width: 100%; font: inherit; padding: 10px 14px; border: 1px solid var(--linha);
+             border-radius: 6px; background: #fff; margin-bottom: 8px; }
+    #busca:focus-visible { outline: 3px solid var(--tinta); outline-offset: 2px; }
+
     nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
     nav a { text-decoration: none; color: var(--tinta); border: 1px solid var(--linha); background: #fff;
             border-radius: 999px; padding: 6px 14px; font-size: .9rem; }
@@ -53,6 +57,7 @@
 <main>
   <h1>Nossos cursos</h1>
   <p class="sub">Escolhe a categoria e o nível. O pedido é feito pelo WhatsApp.</p>
+  <input id="busca" type="search" placeholder="Pesquisar curso (ex.: Python)" aria-label="Pesquisar curso">
   <p id="erro" role="status"></p>
   <div class="niveis" id="niveis" role="group" aria-label="Nível"></div>
   <nav id="menu" aria-label="Categorias"></nav>
@@ -61,7 +66,7 @@
 
 <script>
   const WHATSAPP = "244923030010";
-  const ORDEM_CATEGORIAS = ["Excel", "Word", "Python", "HTML", "Inglês"];
+  const ORDEM_CATEGORIAS = ["Excel", "Word", "Python", "HTML", "Inglês", "Base de dados MySQL e PostgreSQL"];
   const ORDEM_NIVEIS = ["Iniciante", "Intermédio", "Avançado"];
 
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
@@ -88,22 +93,28 @@
 
   let todos = [];
   let nivelAtivo = "";
+  let termo = "";
+  const norm = s => String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   function desenharNiveis() {
     const opcoes = [["", "Todos os níveis"], ...ORDEM_NIVEIS.map(n => [n, n])];
     document.getElementById("niveis").innerHTML = opcoes.map(([v, t]) =>
-      `<button type="button" data-nivel="${esc(v)}" aria-pressed="${v === nivelAtivo}">${esc(t)}</button>`
+      <button type="button" data-nivel="${esc(v)}" aria-pressed="${v === nivelAtivo}">${esc(t)}</button>
     ).join("");
   }
 
   function desenhar() {
     const div = document.getElementById("catalogo");
     const menu = document.getElementById("menu");
-    const cursos = nivelAtivo ? todos.filter(c => c.nivel === nivelAtivo) : todos;
+    const t = norm(termo).trim();
+    const cursos = todos.filter(c =>
+      (!nivelAtivo || c.nivel === nivelAtivo) &&
+      (!t || norm(c.categoria + " " + c.titulo).includes(t))
+    );
 
     if (!cursos.length) {
       menu.innerHTML = "";
-      div.innerHTML = '<p class="vazio">Não há cursos neste nível.</p>';
+      div.innerHTML = '<p class="vazio">Nenhum curso encontrado.</p>';
       return;
     }
 
@@ -154,6 +165,12 @@
       document.getElementById("erro").textContent = "Não foi possível carregar os cursos.";
     }
   }
+
+  document.getElementById("busca").addEventListener("input", e => {
+    termo = e.target.value;
+    desenhar();
+  });
+
   carregar();
 </script>
 </body>
