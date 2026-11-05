@@ -131,7 +131,7 @@
       return d !== 0 ? d : a.localeCompare(b, "pt");
     });
 
-    menu.innerHTML = nomes.map(n => <a href="#${slug(n)}">${esc(n)}</a>).join("");
+    menu.innerHTML = nomes.map(n => `<a href="#${slug(n)}">${esc(n)}</a>`).join("");
 
     div.innerHTML = nomes.map(nome => {
       const lista = grupos[nome].sort((a, b) => pos(ORDEM_NIVEIS, a.nivel) - pos(ORDEM_NIVEIS, b.nivel));
