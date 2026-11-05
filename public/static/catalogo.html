@@ -84,7 +84,7 @@
     );
     return `<div class="card">
       <h3>${esc(c.titulo)}</h3>
-      ${c.nivel ? <span class="nivel">${esc(c.nivel)}</span> : ""}
+      ${c.nivel ? `<span class="nivel">${esc(c.nivel)}</span>` : ""}
       <p class="desc">${esc(c.descricao)}</p>
       <p class="preco">${kz(c.preco)}</p>
       <a class="zap" href="https://wa.me/${WHATSAPP}?text=${msg}" target="_blank" rel="noopener">Pedir no WhatsApp</a>
