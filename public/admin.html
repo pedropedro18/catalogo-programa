@@ -66,6 +66,7 @@
         <option>Python</option>
         <option>HTML</option>
         <option>Inglês</option>
+        <option>Base de dados MySQL e PostgreSQL</option>
       </select>
 
       <label for="nivel">Nível</label>
@@ -105,7 +106,7 @@
 
 <script>
   const API = "";
-  const ORDEM_CATEGORIAS = ["Excel", "Word", "Python", "HTML", "Inglês"];
+  const ORDEM_CATEGORIAS = ["Excel", "Word", "Python", "HTML", "Inglês", "Base de dados MySQL e PostgreSQL"];
   const ORDEM_NIVEIS = ["Iniciante", "Intermédio", "Avançado"];
   let CHAVE = "";
   let cursos = [];
@@ -191,7 +192,7 @@
         });
         $("cursos").innerHTML = nomes.map(nome => {
           const lista = grupos[nome].sort((a, b) => pos(ORDEM_NIVEIS, a.nivel) - pos(ORDEM_NIVEIS, b.nivel));
-          return `<h3 class="cat">${esc(nome)}</h3>` + lista.map(htmlItem).join("");
+          return <h3 class="cat">${esc(nome)}</h3> + lista.map(htmlItem).join("");
         }).join("");
       }
     } catch (e) {
