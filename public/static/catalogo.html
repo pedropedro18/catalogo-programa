@@ -99,7 +99,7 @@
   function desenharNiveis() {
     const opcoes = [["", "Todos os níveis"], ...ORDEM_NIVEIS.map(n => [n, n])];
     document.getElementById("niveis").innerHTML = opcoes.map(([v, t]) =>
-      <button type="button" data-nivel="${esc(v)}" aria-pressed="${v === nivelAtivo}">${esc(t)}</button>
+      `<button type="button" data-nivel="${esc(v)}" aria-pressed="${v === nivelAtivo}">${esc(t)}</button>`
     ).join("");
   }
 
